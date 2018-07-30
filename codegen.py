@@ -21,10 +21,10 @@ SourceRoot = "."
 ParseCmdLine = True
 
 # [debug] Whether to parse out source files and include paths from the command line
-InputViaCommandLine = False
+InputViaCommandLine = True
 
 # Whether to always do a full regen
-ForceFullRegen = True
+ForceFullRegen = False
 
 def GetCursorFullyQualifiedName(Cursor):
 	""" Return the fully qualified name of the object represented by Cursor, including any parent scopes """
