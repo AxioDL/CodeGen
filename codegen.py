@@ -1,12 +1,19 @@
 # C++ code generation using clang
 import clang.cindex
+import cProfile
 import glob
 import mako.template
 import os
 import sys
 
-# Folder containing the script file
-ScriptDirectory = os.path.dirname(__file__)
+# Directory that the codegen script file is stored in
+ScriptDir = os.path.dirname(__file__)
+
+# [debug] Whether to enable profiling
+EnableProfiling = False
+
+# [debug] Whether to print the AST for each processed source file
+PrintAST = False
 
 # [debug] Path to store auto-generated codegen source files
 ExportPath = "build\\codegen"
@@ -50,13 +57,15 @@ def DebugPrintCursorRecursive(Cursor, SourceFile, Depth=0):
 	print("%s%s (%s)" % (Padding, Cursor.displayname, Cursor.kind))
 	
 	for c in Cursor.get_children():
-		if SourceFile in c.location.file.name:
+		if c.location.file and SourceFile in c.location.file.name:
 			DebugPrintCursorRecursive(c, SourceFile, Depth+1)
 
 class CxxCompileEnvironment:
 	""" Compilation environment used to configure clang """
 	def __init__(self, InIncludePaths):
-		self.CompilerArgs = ['-x', 'c++', '-std=c++17', '-DIS_CODEGEN_SCRIPT=1']
+		# Disabling standard includes massively speeds up parsing time.
+		# We still need custom includes for things like the FOURCC macro, but standard includes are generally not needed.
+		self.CompilerArgs = ['-x', 'c++', '-std=c++17', '-nobuiltininc', '--no-standard-includes', '-DIS_CODEGEN_SCRIPT=1']
 		self.IncludePaths = InIncludePaths
 	
 	def GetClangArgs(self):
@@ -71,7 +80,7 @@ class CxxEnumConstant:
 		self.Value = Cursor.enum_value
 		
 		# Remove 'e' prefix from the name
-		if len(self.Name) >= 2 and self.Name[0] is 'e' and self.Name[1].isupper():
+		if len(self.Name) >= 2 and self.Name[0] is 'e' and not self.Name[1].islower():
 			self.Name = self.Name[1:]
 
 class CxxEnum:
@@ -81,15 +90,16 @@ class CxxEnum:
 		self.Name = Cursor.spelling
 		self.FullName = GetCursorFullyQualifiedName(Cursor)
 		self.Constants = []
-		self.InvalidValue = -1
+		self.ErrorValue = -1
 		
 		for Child in Cursor.get_children():
 			if Child.kind is clang.cindex.CursorKind.ENUM_CONSTANT_DECL:
 				Constant = CxxEnumConstant(Child)
 				self.Constants.append(Constant)
 				
-				if "invalid" in Constant.Name.lower():
-					self.InvalidValue = Constant.Value
+				LowercaseName = Constant.Name.lower()
+				if Constant.Value == -1 or "invalid" in LowercaseName or "unknown" in LowercaseName:
+					self.ErrorValue = Constant.Value
 	
 	def DebugPrint(self):
 		print("Enum: %s (%s)" % (GetCursorFullyQualifiedName(self.Cursor), self.Cursor.location.file))
@@ -159,15 +169,20 @@ class SourceFile:
 	def LastModifiedTime(self):
 		""" Returns the last modified time for this source file """
 		return os.path.getmtime( self.FilePath )
-		
+	
 	def Analyze(self, ClangIndex, CompileEnvironment):
 		""" Analyzes the AST for any components that need generated code """
 		TranslationUnit = ClangIndex.parse(self.FilePath, CompileEnvironment.GetClangArgs())
+		self.UsedSymbols = set()
 		self.CursorRecurse(TranslationUnit.cursor, 0)
 		
+		if PrintAST:
+			DebugPrintCursorRecursive(TranslationUnit.cursor, self.FilePath)
+			print("")
+			
+		# Generate code
 		if self.Enums:
-			# Generate code
-			MakoTemplateFile = open("template.mako", "r")
+			MakoTemplateFile = open("%s/template.mako" % ScriptDir, "r")
 			MakoTemplateText = MakoTemplateFile.read()
 			MakoTemplateFile.close()
 			
@@ -190,12 +205,20 @@ class SourceFile:
 			if not Child.location.file or not Child.location.file.name.endswith(self.FilePath):
 				continue
 				
-			# check for enum
-			if Child.kind is clang.cindex.CursorKind.ENUM_DECL:
+			# check for enum; anonymous enums are not supported
+			if Child.kind is clang.cindex.CursorKind.ENUM_DECL and Child.spelling:
+				# avoid the same enum being registered twice. This happens if you declare an enum and a variable of that enum simultaneously
+				QualifiedName = GetCursorFullyQualifiedName(Child)
+				
+				if QualifiedName in self.UsedSymbols:
+					continue
+				else:
+					self.UsedSymbols.add(QualifiedName)
+					
 				NewEnum = CxxEnum(Child)
 				self.Enums.append(NewEnum)
 				
-				# Register any needed nested forward declares
+				# Register any needed forward declares
 				Parent = Cursor
 				DeclarationCursors = []
 				
@@ -229,6 +252,7 @@ def RunCodegen():
 	# Source files to parse
 	SourceFiles = []
 	IncludePaths = []
+	OutCodegenSource = ""
 
 	if ParseCmdLine:
 		global InputViaCommandLine
@@ -263,7 +287,10 @@ def RunCodegen():
 			
 			if arg == "-o":
 				i += 1
-				OutputCppSource = sys.argv[i]
+				OutCodegenSource = sys.argv[i]
+				
+				global ExportPath
+				ExportPath = os.path.dirname(OutCodegenSource)
 			
 			if arg == "-pwd":
 				i += 1
@@ -274,7 +301,9 @@ def RunCodegen():
 		SourceFiles  = glob.glob("%s\\**\\*.cpp" % SourceRoot, recursive=True)
 		SourceFiles += glob.glob("%s\\**\\*.hpp" % SourceRoot, recursive=True)
 		SourceFiles += glob.glob("%s\\**\\*.h"   % SourceRoot, recursive=True)
-		OutputCppSource += OutputCppSource
+		OutCodegenSource = OutputCppSource
+	
+	print("Build Dir: " + ExportPath)
 	
 	# Clang index
 	#@todo - this definitely isn't portable??? how should I be setting this???
@@ -285,10 +314,15 @@ def RunCodegen():
 	CompileEnvironment = CxxCompileEnvironment(IncludePaths)
 
 	# Process all source files
-	LastRegenTime = os.path.getmtime(OutputCppSource) if os.path.isfile(OutputCppSource) else 0
+	LastRegenTime = os.path.getmtime(OutCodegenSource) if os.path.isfile(OutCodegenSource) else 0
 	OutFiles = []
 
 	for FilePath in SourceFiles:
+		# If the file doesn't exist, just skip it.
+		# This mirrors qmake behavior.
+		if not os.path.isfile(FilePath):
+			continue
+		
 		NewFile = SourceFile(FilePath)
 		NewFileOut = NewFile.GetCodegenFile()
 		
@@ -305,15 +339,22 @@ def RunCodegen():
 					os.remove(NewFileOut)
 		
 		# If the file hasn't been modified, we still want to make sure it gets included in the output source
-		elif os.path.isfile(NewFileOut):
-			OutFiles.append(NewFileOut)
+		else:
+			if os.path.isfile(NewFileOut):
+				OutFiles.append(NewFileOut)
 
 	# Create final output cpp
-	OutDir = os.path.dirname(OutputCppSource)
+	OutDir = os.path.dirname(OutCodegenSource)
 	os.makedirs(OutDir, exist_ok=True)
 
-	OutFile = open(OutputCppSource, "w")
+	OutFile = open(OutCodegenSource, "w")
+	OutFile.write("#pragma warning( push )\n")
+	OutFile.write("#pragma warning( disable : 4146 )\n") # Suppress C4146: unary minus operator applied to unsigned type, result still unsgined
 	[OutFile.write("#include \"%s\"\n" % os.path.normpath(CodegenFile)) for CodegenFile in OutFiles]
+	OutFile.write("#pragma warning( pop )\n")
 	OutFile.close()
 
-RunCodegen()
+if EnableProfiling:
+	cProfile.run('RunCodegen()')
+else:
+	RunCodegen()
