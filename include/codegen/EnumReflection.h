@@ -40,7 +40,7 @@ public:
     /** Returns the enum value corresponding to the given name */
     static T ConvertStringToValue(const char* InValue)
     {
-        //@todo this is slow, and would also prefer the failure case to return a type-dependent default "invalid" value
+        //@todo this is slow
         for (auto Iter = skNameMap.begin(); Iter != NameMap.end(); Iter++)
         {
             if (strcmp(Iter->second, InValue) == 0)
@@ -49,7 +49,7 @@ public:
             }
         }
 
-        return (T) -1;
+        return skErrorValue;
     }
 
     /** Returns an iterator through the enum name map */
