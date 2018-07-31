@@ -41,7 +41,7 @@ public:
     static T ConvertStringToValue(const char* InValue)
     {
         //@todo this is slow
-        for (auto Iter = skNameMap.begin(); Iter != NameMap.end(); Iter++)
+        for (auto Iter = skNameMap.begin(); Iter != skNameMap.end(); Iter++)
         {
             if (strcmp(Iter->second, InValue) == 0)
             {
@@ -49,7 +49,7 @@ public:
             }
         }
 
-        return skErrorValue;
+        return (T) skErrorValue;
     }
 
     /** Returns an iterator through the enum name map */
