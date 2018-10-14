@@ -4,9 +4,9 @@
 #include <cstring>
 #include <ctype.h>
 #include <type_traits>
-#include <unordered_map>
+#include <map>
 
-typedef std::unordered_map<int, const char*> CEnumNameMap;
+typedef std::map<int, const char*> CEnumNameMap;
 
 /** Provides runtime information about enum types */
 template<typename T, typename = typename std::enable_if< std::is_enum<T>::value >::type>
@@ -65,9 +65,33 @@ public:
      */
     inline static T ErrorValue()
     {
-        return skErrorValue;
+        return (T) skErrorValue;
     }
 
+    /** Iterator class for iterating through all possible enum values */
+    class CIterator
+    {
+        CEnumNameMap::const_iterator mInternalIterator;
+
+    public:
+        CIterator()
+        {
+            mInternalIterator = skNameMap.cbegin();
+        }
+
+        inline T Value() const          { return (T) mInternalIterator->first; }
+        inline const char* Name() const { return mInternalIterator->second; }
+        inline operator bool() const    { return mInternalIterator != skNameMap.cend(); }
+        inline CIterator& operator++()  { mInternalIterator++; return *this; }
+        inline CIterator operator++(int){ CIterator RetV = *this; mInternalIterator++; return RetV; }
+    };
 };
+
+/** Easier accessor function */
+template<typename T>
+inline const char* EnumValueName(T InEnum)
+{
+    return TEnumReflection<T>::ConvertValueToString(InEnum);
+}
 
 #endif

@@ -303,6 +303,7 @@ def RunCodegen():
 		SourceFiles += glob.glob("%s\\**\\*.h"   % SourceRoot, recursive=True)
 		OutCodegenSource = OutputCppSource
 	
+	print("Codegen Input: " + " ".join(SourceFiles))
 	print("Build Dir: " + ExportPath)
 	
 	# Clang index
