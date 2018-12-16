@@ -79,8 +79,8 @@ class CxxEnumConstant:
 		self.FullName = GetCursorFullyQualifiedName(Cursor)
 		self.Value = Cursor.enum_value
 		
-		# Remove 'e' prefix from the name
-		if len(self.Name) >= 2 and self.Name[0] is 'e' and not self.Name[1].islower():
+		# Remove 'e' or 'k' prefix from the name
+		if len(self.Name) >= 2 and (self.Name[0] is 'e' or self.Name[0] is 'k') and not self.Name[1].islower():
 			self.Name = self.Name[1:]
 
 class CxxEnum:
