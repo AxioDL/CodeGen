@@ -5,7 +5,7 @@ Python C++ code generation tool using libclang that integrates into qmake. Curre
 # Requirements
 
 Running CodeGen requires:
-* LLVM installation
+* LLVM 6.0.1 installation; currently must be installed to `C:\Program Files\LLVM` on Windows
 * Python 3.x
 * Python packages `clang` and `mako` (install via pip)
 
