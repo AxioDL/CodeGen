@@ -309,7 +309,10 @@ def RunCodegen():
 	
 	# Clang index
 	#@todo - this definitely isn't portable??? how should I be setting this???
-	clang.cindex.Config.set_library_file('C:\\Program Files\\LLVM\\bin\\libclang.dll')
+	if sys.platform == "win32":
+		clang.cindex.Config.set_library_file('C:\\Program Files\\LLVM\\bin\\libclang.dll')
+	elif sys.platform == "darwin":
+		clang.cindex.Config.set_library_file('/usr/local/opt/llvm@6/lib/libclang.dylib')
 	ClangIndex = clang.cindex.Index.create()
 
 	# C++ environment
