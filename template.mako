@@ -7,7 +7,8 @@ ${Decl.GenerateText(0)}
 % endfor
 
 % for Enum in Enums:
-const CEnumNameMap TEnumReflection<enum ${Enum.FullName}>::skNameMap = {
+template<>
+const CEnumNameMap TEnumReflection<${Enum.FullName}>::skNameMap = {
 <% ValueSet = set() %> \
 	% for Constant in Enum.Constants:
 	% if Constant.Value not in ValueSet:
@@ -16,6 +17,7 @@ const CEnumNameMap TEnumReflection<enum ${Enum.FullName}>::skNameMap = {
 	% endif
 	% endfor
 };
-const int TEnumReflection<enum ${Enum.FullName}>::skErrorValue = ${Enum.ErrorValue};
+template<>
+const int TEnumReflection<${Enum.FullName}>::skErrorValue = ${Enum.ErrorValue};
 
 % endfor

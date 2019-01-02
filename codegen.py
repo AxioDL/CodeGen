@@ -111,17 +111,18 @@ class CxxEnum:
 
 class ScopedDeclare:
 	""" Recursive class that represents a scoped forward declare in the generated source code """
-	def __init__(self, TypeName, Name):
+	def __init__(self, TypeName, Name, UnderlyingType=None):
 		self.TypeName = TypeName
 		self.Name = Name
 		self.Children = []
-	
-	def AddChild(self, TypeName, Name):
+		self.UnderlyingType = UnderlyingType
+
+	def AddChild(self, TypeName, Name, UnderlyingType=None):
 		for Child in self.Children:
 			if Child.TypeName == TypeName and Child.Name == Name:
 				return Child
-		
-		NewDeclare = ScopedDeclare(TypeName, Name)
+
+		NewDeclare = ScopedDeclare(TypeName, Name, UnderlyingType)
 		self.Children.append(NewDeclare)
 		return self.Children[-1]
 		
@@ -131,8 +132,9 @@ class ScopedDeclare:
 		if self.Name:
 			IndentText = '\t' * Indentation
 			LineEnd = " {" if self.Children else ";"
-			OutText = "%s%s %s%s\n" % (IndentText, self.TypeName, self.Name, LineEnd)
-		
+			UTSuffix = ": " + self.UnderlyingType if self.UnderlyingType else ""
+			OutText = "%s%s %s%s%s\n" % (IndentText, self.TypeName, self.Name, UTSuffix, LineEnd)
+
 		for Child in self.Children:
 			OutText += Child.GenerateText(Indentation + 1)
 		
@@ -233,17 +235,16 @@ class SourceFile:
 						break
 					
 					Parent = Parent.semantic_parent
-					
-				if DeclarationCursors:
-					Declaration = self.RootDeclare
-					
-					for i in range(len(DeclarationCursors)-1, -1, -1):
-						Decl = DeclarationCursors[i]
-						TypeName = "namespace" if Decl.kind is clang.cindex.CursorKind.NAMESPACE else "struct"
-						Declaration = Declaration.AddChild(TypeName, Decl.spelling)
-					
-					Declaration.AddChild("enum", NewEnum.Name)
-					
+
+				Declaration = self.RootDeclare
+				for i in range(len(DeclarationCursors)-1, -1, -1):
+					Decl = DeclarationCursors[i]
+					TypeName = "namespace" if Decl.kind is clang.cindex.CursorKind.NAMESPACE else "struct"
+					Declaration = Declaration.AddChild(TypeName, Decl.spelling)
+
+				UnderlyingType = Child.enum_type.get_canonical().spelling
+				Declaration.AddChild("enum", NewEnum.Name, UnderlyingType)
+
 			# currently we're only testing enums - recurse for non-enum types to look for more enums
 			else:
 				self.CursorRecurse(Child, Depth + 1)
