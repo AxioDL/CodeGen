@@ -1,13 +1,13 @@
 # C++ code generation using clang
 import clang.cindex
 import cProfile
-import glob
 import mako.template
 import os
-import sys
+
+from typing import List, Iterable
 
 # Directory that the codegen script file is stored in
-ScriptDir = os.path.dirname(__file__)
+TemplateDir = os.path.normpath(os.path.join(os.path.dirname(__file__), 'data'))
 
 # [debug] Whether to enable profiling
 EnableProfiling = False
@@ -16,10 +16,10 @@ EnableProfiling = False
 PrintAST = False
 
 # [debug] Path to store auto-generated codegen source files
-ExportPath = "build\\codegen"
+ExportPath = "build/codegen"
 
 # [debug] Path to store the final output cpp file
-OutputCppSource = "%s\\auto_codegen.cpp" % ExportPath
+OutputCppSource = "%s/auto_codegen.cpp" % ExportPath
 
 # [debug] Path to find the source files
 SourceRoot = "."
@@ -32,6 +32,7 @@ InputViaCommandLine = True
 
 # Whether to always do a full regen
 ForceFullRegen = False
+
 
 def GetCursorFullyQualifiedName(Cursor):
 	""" Return the fully qualified name of the object represented by Cursor, including any parent scopes """
@@ -150,7 +151,7 @@ class ScopedDeclare:
 		
 	def DebugPrint(self):
 		print( self.GenerateText(0) )
-		
+
 class SourceFile:
 	""" A C++ source code file """
 	def __init__(self, FilePath):
@@ -158,17 +159,17 @@ class SourceFile:
 		self.Enums = []
 		self.RootDeclare = ScopedDeclare("", "")
 		
-	def GetCodegenFile(self):
+	def GetCodegenFile(self, SourceRoot: str, OutputRoot: str):
 		""" Returns the path to store the auto-generated code for this source file """
-		if os.path.isabs(self.FilePath):
-			RelativePath = self.FilePath[3:]
-			return "%s\\%s.codegen.inl" % (ExportPath, RelativePath)
-		else:
-			return "%s\\%s.codegen.inl" % (ExportPath, self.FilePath)
+		abspath = os.path.abspath(self.FilePath)
+		relpath = os.path.relpath(abspath, SourceRoot)
+		reldir, filename = os.path.split(relpath)
+		filename_no_ext, _ = os.path.splitext(filename)
+		return os.path.join(OutputRoot, reldir, filename_no_ext + '_codegen.cpp')
 	
 	def LastModifiedTime(self):
 		""" Returns the last modified time for this source file """
-		return os.path.getmtime( self.FilePath )
+		return os.path.getmtime(self.FilePath)
 	
 	def Analyze(self, ClangIndex, CompileEnvironment):
 		""" Analyzes the AST for any components that need generated code """
@@ -179,23 +180,21 @@ class SourceFile:
 		if PrintAST:
 			DebugPrintCursorRecursive(TranslationUnit.cursor, self.FilePath)
 			print("")
-			
-		# Generate code
+
+	def Generate(self, OutputPath: str):
 		if self.Enums:
-			MakoTemplateFile = open("%s/template.mako" % ScriptDir, "r")
-			MakoTemplateText = MakoTemplateFile.read()
-			MakoTemplateFile.close()
-			
+			with open("%s/template.mako" % TemplateDir, "r") as MakoTemplateFile:
+				MakoTemplateText = MakoTemplateFile.read()
+
 			MakoTemplate = mako.template.Template(MakoTemplateText)
-			GeneratedCode = MakoTemplate.render(Enums=self.Enums, IncludeFile=self.FilePath, ForwardDeclares=self.RootDeclare.Children)
-			
-			OutPath = self.GetCodegenFile()
-			OutDir = os.path.dirname(OutPath)
+			GeneratedCode = MakoTemplate.render(Enums=self.Enums, IncludeFile=self.FilePath,
+												ForwardDeclares=self.RootDeclare.Children)
+
+			OutDir = os.path.dirname(OutputPath)
 			os.makedirs(OutDir, exist_ok=True)
-			
-			OutCodegenFile = open(OutPath, "w")
-			OutCodegenFile.write(GeneratedCode)
-			OutCodegenFile.close()
+
+			with open(OutputPath, "w") as file:
+				file.write(GeneratedCode)
 		
 	def CursorRecurse(self, Cursor, Depth):
 		""" Recursive function that performs the actual analysis work of the AST """
@@ -248,114 +247,36 @@ class SourceFile:
 			else:
 				self.CursorRecurse(Child, Depth + 1)
 
-def RunCodegen():
-	# Source files to parse
-	SourceFiles = []
-	IncludePaths = []
-	OutCodegenSource = ""
 
-	if ParseCmdLine:
-		global InputViaCommandLine
-		
-		for i in range(0, len(sys.argv)):
-			arg = sys.argv[i]
-		
-			if InputViaCommandLine is True and arg == "-sourcefiles" or arg == "-include":
-				i += 1
-			
-				while i < len(sys.argv) and sys.argv[i][0] != '-':
-					File = sys.argv[i]
-				
-					if arg == "-sourcefiles":
-						# this isn't the best way to handle this since the output file is provided via commandline arg
-						if "auto_codegen" not in File:
-							SourceFiles.append(File)
-					else:
-						IncludePaths.append(File)
-				
-					i += 1
-				
-				i -= 1
-		
-			# The only time we don't use commandline input is for debugging
-			if arg == "-cmdinput":
-				InputViaCommandLine = True
-			
-			if arg == "-full":
-				global ForceFullRegen
-				ForceFullRegen = True
-			
-			if arg == "-o":
-				i += 1
-				OutCodegenSource = sys.argv[i]
-				
-				global ExportPath
-				ExportPath = os.path.dirname(OutCodegenSource)
-			
-			if arg == "-pwd":
-				i += 1
-				WorkingDirectory = sys.argv[i]
-				os.chdir(WorkingDirectory)
-				
-	if not InputViaCommandLine:
-		SourceFiles  = glob.glob("%s\\**\\*.cpp" % SourceRoot, recursive=True)
-		SourceFiles += glob.glob("%s\\**\\*.hpp" % SourceRoot, recursive=True)
-		SourceFiles += glob.glob("%s\\**\\*.h"   % SourceRoot, recursive=True)
-		OutCodegenSource = OutputCppSource
-	
-	print("Codegen Input: " + " ".join(SourceFiles))
-	print("Build Dir: " + ExportPath)
-	
+def RunCodegen(file_path: str, include_paths: Iterable[str], lib_clang_path: str, source_root: str, output_root: str):
+	file = GetAnalyzedSourceFile(file_path, include_paths, lib_clang_path)
+	output_path = file.GetCodegenFile(source_root, output_root)
+	file.Generate(output_path)
+
+
+# if EnableProfiling:
+# 	cProfile.run('RunCodegen()')
+# else:
+# 	RunCodegen()
+
+
+def GetAnalyzedSourceFile(FilePath: str, IncludePaths: Iterable[str], LibClangPath: str) -> SourceFile:
 	# Clang index
-	#@todo - this definitely isn't portable??? how should I be setting this???
-	clang.cindex.Config.set_library_file('C:\\Program Files\\LLVM\\bin\\libclang.dll')
+	clang.cindex.Config.set_library_file(LibClangPath)
 	ClangIndex = clang.cindex.Index.create()
 
 	# C++ environment
 	CompileEnvironment = CxxCompileEnvironment(IncludePaths)
 
-	# Process all source files
-	LastRegenTime = os.path.getmtime(OutCodegenSource) if os.path.isfile(OutCodegenSource) else 0
-	OutFiles = []
+	NewFile = SourceFile(FilePath)
+	NewFile.Analyze(ClangIndex, CompileEnvironment)
+	return NewFile
 
-	for FilePath in SourceFiles:
-		# If the file doesn't exist, just skip it.
-		# This mirrors qmake behavior.
-		if not os.path.isfile(FilePath):
-			continue
-		
-		NewFile = SourceFile(FilePath)
-		NewFileOut = NewFile.GetCodegenFile()
-		
-		# Only run codegen on this file if it has been modified since last time
-		if ForceFullRegen or NewFile.LastModifiedTime() > LastRegenTime:
-			NewFile.Analyze(ClangIndex, CompileEnvironment)
-		
-			if NewFile.Enums:
-				# Register this as a file that needs to be included in the output source
-				OutFiles.append(NewFileOut)
-			else:
-				# Delete codegen file if it exists
-				if os.path.isfile(NewFileOut):
-					os.remove(NewFileOut)
-		
-		# If the file hasn't been modified, we still want to make sure it gets included in the output source
-		else:
-			if os.path.isfile(NewFileOut):
-				OutFiles.append(NewFileOut)
 
-	# Create final output cpp
-	OutDir = os.path.dirname(OutCodegenSource)
-	os.makedirs(OutDir, exist_ok=True)
+def get_output_files(source_file: str, include_paths: Iterable[str], lib_clang_path: str, source_root: str, output_root: str) -> List[str]:
+	file = GetAnalyzedSourceFile(source_file, include_paths, lib_clang_path)
 
-	OutFile = open(OutCodegenSource, "w")
-	OutFile.write("#pragma warning( push )\n")
-	OutFile.write("#pragma warning( disable : 4146 )\n") # Suppress C4146: unary minus operator applied to unsigned type, result still unsgined
-	[OutFile.write("#include \"%s\"\n" % os.path.normpath(CodegenFile)) for CodegenFile in OutFiles]
-	OutFile.write("#pragma warning( pop )\n")
-	OutFile.close()
+	if not file.Enums:
+		return []
 
-if EnableProfiling:
-	cProfile.run('RunCodegen()')
-else:
-	RunCodegen()
+	return [file.GetCodegenFile(source_root, output_root)]
