@@ -13,6 +13,7 @@ class ArgumentData(object):
         self.include_paths: List[str] = []
         self.source_root = ''
         self.output_root = ''
+        self.cache_path = None
 
 
 argparser = argparse.ArgumentParser()
@@ -22,6 +23,7 @@ argparser.add_argument('--libclangpath', help='Path to libclang library file', r
 argparser.add_argument('--include', '-I', help='Define an include path', dest='include_paths', action='append')
 argparser.add_argument('--source-root', help='Root path of all source files', required=True)
 argparser.add_argument('--output-root', help='Root path of all files to be output', required=True)
+argparser.add_argument('--cache-path', help='Path to a directory to store output file caches in')
 
 
 def main() -> int:
@@ -40,7 +42,14 @@ def main() -> int:
 
 
 def do_get_output_files_command(args: ArgumentData) -> int:
-    output_files = codegen.get_output_files(args.source_file, args.include_paths, args.libclangpath, args.source_root, args.output_root)
+    output_files = codegen.get_output_files(
+        args.source_file,
+        args.include_paths,
+        args.libclangpath,
+        args.source_root,
+        args.output_root,
+        args.cache_path
+    )
     sys.stdout.write(';'.join(output_files))
     return 0
 

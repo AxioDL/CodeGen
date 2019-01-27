@@ -137,7 +137,7 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'clang==5.0',
+        'clang==6.0',
         'Mako==1.0.7'
     ],
 

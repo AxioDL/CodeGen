@@ -4,7 +4,7 @@ import cProfile
 import mako.template
 import os
 
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 
 # Directory that the codegen script file is stored in
 TemplateDir = os.path.normpath(os.path.join(os.path.dirname(__file__), 'data'))
@@ -273,10 +273,37 @@ def GetAnalyzedSourceFile(FilePath: str, IncludePaths: Iterable[str], LibClangPa
 	return NewFile
 
 
-def get_output_files(source_file: str, include_paths: Iterable[str], lib_clang_path: str, source_root: str, output_root: str) -> List[str]:
+def get_output_files(
+		source_file: str,
+		include_paths: Iterable[str],
+		lib_clang_path: str,
+		source_root: str,
+		output_root: str,
+		cache_path: Optional[str]
+) -> List[str]:
+
 	file = GetAnalyzedSourceFile(source_file, include_paths, lib_clang_path)
 
 	if not file.Enums:
-		return []
+		output_files = []
+	else:
+		output_files = [file.GetCodegenFile(source_root, output_root)]
 
-	return [file.GetCodegenFile(source_root, output_root)]
+	if cache_path:
+		cache_output_files(cache_path, source_root, source_file, output_files)
+
+	return output_files
+
+
+def cache_output_files(cache_path: str, source_root: str, file_path: str, output_files: List[str]) -> None:
+	cache_file_path = get_output_files_cache_filename(cache_path, source_root, file_path)
+	cache_file_dir = os.path.dirname(cache_file_path)
+	os.makedirs(cache_file_dir, exist_ok=True)
+	with open(cache_file_path, 'w') as f:
+		f.write(';'.join(output_files))
+
+
+def get_output_files_cache_filename(cache_path: str, source_root: str, file_path: str) -> str:
+	abspath = os.path.abspath(file_path)
+	relpath = os.path.relpath(abspath, source_root)
+	return os.path.normpath(os.path.join(cache_path, relpath) + '.outputs')
