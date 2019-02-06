@@ -11,12 +11,25 @@ target_compile_definitions(
     INTERFACE
         WITH_CODEGEN
 )
+target_include_directories(
+    codegen
+    INTERFACE
+        # Add source include files to target's interface include directories for projects using add_subdirectory()
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> 
+)
+
+set(setup_command_args "")
+list(APPEND setup_command_args 
+    "${PYTHON_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/setup.py" "sdist" "-d" "${PROJECT_BINARY_DIR}/dist"
+)
+set(package_file_name "codegen-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.tar.gz")
+set(package_file "${PROJECT_BINARY_DIR}/dist/${package_file_name}")
 
 add_custom_target(
     codegen_sdist
     ALL
     COMMAND
-        "${PYTHON_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/setup.py" "sdist" "-d" "${PROJECT_BINARY_DIR}/dist"
+        ${setup_command_args}
     WORKING_DIRECTORY
         "${PROJECT_SOURCE_DIR}"
 )
@@ -30,7 +43,7 @@ install(
 
 # Install the python package
 install(
-    FILES "${PROJECT_BINARY_DIR}/dist/codegen-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.tar.gz"
+    FILES "${package_file}"
     DESTINATION "share/codegen/"
 )
 
@@ -50,7 +63,7 @@ set(config_install_dir "lib/cmake/codegen")
 install(
     TARGETS codegen
     EXPORT codegenTargets
-    INCLUDES DESTINATION "include/codegen"
+    INCLUDES DESTINATION "include/codegen"  # Added to INTERFACE_INCLUDE_DIRECTORIES
 )
 
 # Install the target config files
@@ -78,3 +91,25 @@ install(
     FILES "${config_file}" "${version_config_file}"
     DESTINATION ${config_install_dir}
 )
+
+#
+# If we're told to, build the python package at configure time
+# 
+if (CODEGEN_BUILD_PACKAGE_DURING_CONFIGURE)
+    message(STATUS "Building CodeGen Package")
+    execute_process(
+        COMMAND
+            ${setup_command_args}
+        WORKING_DIRECTORY
+            "${PROJECT_SOURCE_DIR}"
+        RESULT_VARIABLE setup_result
+    )
+    if (NOT setup_result EQUAL 0)
+        message(FATAL_ERROR "Failed to setup CodeGen package during configure time")
+    endif()
+
+    # Copy the built package to a place we can easily find it from parent projects
+    file(COPY "${package_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+    file(RENAME "${CMAKE_CURRENT_BINARY_DIR}/${package_file_name}" "${CMAKE_CURRENT_BINARY_DIR}/codegen.tar.gz") 
+endif()
+
