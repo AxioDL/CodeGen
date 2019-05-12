@@ -22,6 +22,9 @@ function(add_codegen_targets
     #
     # Find libclang.
     #
+    if (WIN32)
+      set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
+    endif()
     find_library(CLANG_LIBRARY NAMES clang libclang REQUIRED)
     if ("${CLANG_LIBRARY}" STREQUAL "CLANG_LIBRARY-NOTFOUND")
         message(SEND_ERROR "libclang not found")
