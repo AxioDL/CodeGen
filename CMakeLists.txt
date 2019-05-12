@@ -50,7 +50,7 @@ install(
 # Install the project headers
 install(
     DIRECTORY "${PROJECT_SOURCE_DIR}/include/codegen"
-    DESTINATION "include/codegen"
+    DESTINATION include
 )
 
 
