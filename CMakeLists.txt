@@ -63,7 +63,7 @@ set(config_install_dir "lib/cmake/codegen")
 install(
     TARGETS codegen
     EXPORT codegenTargets
-    INCLUDES DESTINATION "include/codegen"  # Added to INTERFACE_INCLUDE_DIRECTORIES
+    INCLUDES DESTINATION include  # Added to INTERFACE_INCLUDE_DIRECTORIES
 )
 
 # Install the target config files
