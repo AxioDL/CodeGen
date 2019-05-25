@@ -66,7 +66,7 @@ class CxxCompileEnvironment:
 	def __init__(self, InIncludePaths):
 		# Disabling standard includes massively speeds up parsing time.
 		# We still need custom includes for things like the FOURCC macro, but standard includes are generally not needed.
-		self.CompilerArgs = ['-x', 'c++', '-std=c++17', '-nobuiltininc', '--no-standard-includes', '-DIS_CODEGEN_SCRIPT=1']
+		self.CompilerArgs = ['-x', 'c++', '-std=c++17', '-nobuiltininc', '-nostdinc', '-nostdinc++', '-DIS_CODEGEN_SCRIPT=1']
 		self.IncludePaths = InIncludePaths
 	
 	def GetClangArgs(self):

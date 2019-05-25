@@ -101,7 +101,7 @@ function(add_codegen_targets
         endif()
 
         execute_process(
-            COMMAND "${PYTHON_EXECUTABLE}" -m pip install virtualenv
+            COMMAND "${PYTHON_EXECUTABLE}" -m pip install --user virtualenv
             RESULT_VARIABLE update_venv_result
         )
         if (NOT update_venv_result EQUAL 0)
@@ -121,8 +121,8 @@ function(add_codegen_targets
         #
         execute_process(
             COMMAND
-                "${venv_path}/${venv_python_executable_path}" "-m" "pip"
-                "install" "${CODEGEN_PACKAGE}"
+                "${venv_path}/${venv_python_executable_path}" -m pip
+                install "${CODEGEN_PACKAGE}"
             RESULT_VARIABLE pip_result
         )
         if (NOT pip_result EQUAL 0)
@@ -143,8 +143,8 @@ function(add_codegen_targets
         OUTPUT
             "${package_dummy}"
         COMMAND
-            "${venv_path}/${venv_python_executable_path}" "-m" "pip"
-            "install" "${CODEGEN_PACKAGE}"
+            "${venv_path}/${venv_python_executable_path}" -m pip
+            install "${CODEGEN_PACKAGE}"
         COMMAND
             "${CMAKE_COMMAND}" "-E" "touch" "${package_dummy}"
         DEPENDS
@@ -152,7 +152,7 @@ function(add_codegen_targets
     )
 
     set(include_directories_arguments "")
-    foreach(include_directory include_directories)
+    foreach(include_directory ${include_directories})
         list(APPEND include_directories_arguments "-I")
         list(APPEND include_directories_arguments "${include_directory}")
     endforeach()
