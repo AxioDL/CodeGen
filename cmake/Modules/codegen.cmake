@@ -238,3 +238,27 @@ function(add_codegen_targets
     set("${generated_files_var}" "${all_output_files}" PARENT_SCOPE)
 
 endfunction()
+
+#
+# gather_include_directories recursively builds a list of include directories
+# across all dependencies.
+#
+
+function(_gather_include_directories_impl target_name)
+    get_target_property(target_dependencies ${target_name} INTERFACE_LINK_LIBRARIES)
+    foreach(dep ${target_dependencies})
+        if(TARGET ${dep})
+            get_target_property(dep_includes ${dep} INTERFACE_INCLUDE_DIRECTORIES)
+            list(APPEND target_includes ${dep_includes})
+            _gather_include_directories_impl(${dep})
+        endif()
+    endforeach()
+    set(target_includes ${target_includes} PARENT_SCOPE)
+endfunction()
+
+function(gather_include_directories var target_name)
+    get_target_property(target_includes ${target_name} INTERFACE_INCLUDE_DIRECTORIES)
+    _gather_include_directories_impl(${target_name})
+    list(REMOVE_DUPLICATES target_includes)
+    set(${var} ${target_includes} PARENT_SCOPE)
+endfunction()
