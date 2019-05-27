@@ -25,7 +25,12 @@ function(add_codegen_targets
     if (WIN32)
       set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
     endif()
-    find_library(CLANG_LIBRARY NAMES clang libclang REQUIRED)
+    if (APPLE)
+        execute_process(COMMAND xcodebuild -find-library clang
+                        OUTPUT_VARIABLE CLANG_LIBRARY OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+        find_library(CLANG_LIBRARY NAMES clang libclang REQUIRED)
+    endif()
     if ("${CLANG_LIBRARY}" STREQUAL "CLANG_LIBRARY-NOTFOUND")
         message(SEND_ERROR "libclang not found")
         set(missing_requirements TRUE)
