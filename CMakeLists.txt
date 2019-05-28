@@ -3,7 +3,7 @@ include(CMakePackageConfigHelpers)
 
 project(codegen VERSION 0.1.0)
 
-find_package(PythonInterp 3.6 REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 add_library(codegen INTERFACE)
 target_compile_definitions(
@@ -20,7 +20,7 @@ target_include_directories(
 
 set(setup_command_args "")
 list(APPEND setup_command_args 
-    "${PYTHON_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/setup.py" "sdist" "-d" "${PROJECT_BINARY_DIR}/dist"
+    "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/setup.py" "sdist" "-d" "${PROJECT_BINARY_DIR}/dist"
 )
 set(package_file_name "codegen-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.tar.gz")
 set(package_file "${PROJECT_BINARY_DIR}/dist/${package_file_name}")
