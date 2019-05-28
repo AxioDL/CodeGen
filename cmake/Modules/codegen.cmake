@@ -12,7 +12,7 @@ function(add_codegen_targets
     #
     # Find our python interpreter, and set up some python related variables.
     #
-    find_package(PythonInterp 3.6 REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     set(venv_path "${CMAKE_CURRENT_BINARY_DIR}/codegen_venv")
     set(venv_dummy "${CMAKE_CURRENT_BINARY_DIR}/codegen_venv_dummy")
     set(package_dummy "${CMAKE_CURRENT_BINARY_DIR}/codegen_package_dummy")
@@ -91,13 +91,13 @@ function(add_codegen_targets
     if (NOT EXISTS "${venv_dummy}")
         message(STATUS "Creating virtual env at ${venv_path}")
         execute_process(
-            COMMAND "${PYTHON_EXECUTABLE}" -m ensurepip
+            COMMAND "${Python3_EXECUTABLE}" -m ensurepip
             RESULT_VARIABLE update_venv_result
         )
         if (NOT update_venv_result EQUAL 0)
             # ensurepip module failed not installed. Check if pip is installed, and cause an error if it's not installed.
             execute_process(
-                COMMAND "${PYTHON_EXECUTABLE}" -m pip --version
+                COMMAND "${Python3_EXECUTABLE}" -m pip --version
                 RESULT_VARIABLE pip_version_result
             )
             if (NOT pip_version_result EQUAL 0)
@@ -106,7 +106,7 @@ function(add_codegen_targets
         endif()
 
         execute_process(
-            COMMAND "${PYTHON_EXECUTABLE}" -m pip install --user virtualenv
+            COMMAND "${Python3_EXECUTABLE}" -m pip install --user virtualenv
             RESULT_VARIABLE update_venv_result
         )
         if (NOT update_venv_result EQUAL 0)
@@ -114,7 +114,7 @@ function(add_codegen_targets
         endif()
 
         execute_process(
-            COMMAND "${PYTHON_EXECUTABLE}" -m virtualenv "${venv_path}"
+            COMMAND "${Python3_EXECUTABLE}" -m virtualenv "${venv_path}"
             RESULT_VARIABLE update_venv_result
         )
         if (NOT update_venv_result EQUAL 0)
