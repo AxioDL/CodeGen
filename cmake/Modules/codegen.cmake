@@ -26,8 +26,10 @@ function(add_codegen_targets
       set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
     endif()
     if (APPLE)
-        execute_process(COMMAND xcodebuild -find-library clang
-                        OUTPUT_VARIABLE CLANG_LIBRARY OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(COMMAND xcrun -find clang
+                        OUTPUT_VARIABLE CLANG_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        get_filename_component(CLANG_BIN_DIR "${CLANG_BIN_PATH}" DIRECTORY)
+        find_library(CLANG_LIBRARY NAMES clang libclang HINTS "${CLANG_BIN_DIR}/../lib" REQUIRED)
     else()
         find_library(CLANG_LIBRARY NAMES clang libclang REQUIRED)
     endif()
