@@ -15,9 +15,11 @@ from io import open
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+# Long description from the README file
+long_description =\
+'''Python C++ code generation tool using libclang that integrates into cmake. \
+Currently, it provides an enum reflection system that allows you to convert enum \
+constant values to/from string. It could be extended with more features in the future.'''
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
