@@ -24,7 +24,8 @@ function(add_codegen_targets
     #
     if (WIN32)
         set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
-        find_library(CLANG_LIBRARY NAMES clang libclang PATHS "$ENV{ProgramW6432}/LLVM/bin" REQUIRED)
+        find_library(CLANG_LIBRARY NAMES clang libclang PATHS "$ENV{ProgramW6432}/LLVM/bin"
+                     NO_SYSTEM_ENVIRONMENT_PATH REQUIRED)
     elseif (APPLE)
         execute_process(COMMAND xcrun -find clang
                         OUTPUT_VARIABLE CLANG_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
