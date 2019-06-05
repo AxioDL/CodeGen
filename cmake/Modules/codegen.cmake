@@ -51,7 +51,7 @@ function(add_codegen_targets
             endif()
         endforeach()
         if ("${CODEGEN_PACKAGE}" STREQUAL "")
-            set(CODEGEN_PACKAGE "CODEGEN_PACKAGE-NOTFOUND" CACHE FILEPATH)
+            set(CODEGEN_PACKAGE "CODEGEN_PACKAGE-NOTFOUND" CACHE FILEPATH "")
         endif()
     endif()
     if ("${CODEGEN_PACKAGE}" STREQUAL "CODEGEN_PACKAGE-NOTFOUND")
@@ -224,7 +224,7 @@ function(add_codegen_targets
         foreach(current_output_file ${current_output_files})
             list(APPEND all_output_files "${current_output_file}")
         endforeach()
-        
+
         add_custom_command(
             OUTPUT "${current_output_files}"
             COMMAND
