@@ -164,8 +164,10 @@ class SourceFile:
 		abspath = os.path.abspath(self.FilePath)
 		relpath = os.path.relpath(abspath, SourceRoot)
 		reldir, filename = os.path.split(relpath)
-		filename_no_ext, _ = os.path.splitext(filename)
-		return os.path.join(OutputRoot, reldir, filename_no_ext + '_codegen.cpp')
+		filename_no_ext, ext = os.path.splitext(filename)
+		if len(ext):
+			ext = ext[1:]
+		return os.path.join(OutputRoot, reldir, filename_no_ext + '_' + ext + '_codegen.cpp')
 	
 	def LastModifiedTime(self):
 		""" Returns the last modified time for this source file """
