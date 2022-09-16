@@ -140,7 +140,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         'clang==10.0.1',
-        'Mako==1.1.4'
+        'Mako==1.2.2'
     ],
 
     # List additional groups of dependencies here (e.g. development
