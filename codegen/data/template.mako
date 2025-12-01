@@ -4,7 +4,8 @@
 #include "${IncludeFile}"
 
 #pragma warning( push )
-#pragma warning( disable : 4146 )  // Suppress C4146: unary minus operator applied to unsigned type, result still unsgined
+#pragma warning( disable : 4146 ) // Suppress C4146: unary minus operator applied to unsigned type, result still unsigned
+#pragma warning( disable : 4244 ) // 'conversion' conversion from 'type1' to 'type2', possible loss of data
 
 ## % for Decl in ForwardDeclares:
 ## ${Decl.GenerateText(0)}
